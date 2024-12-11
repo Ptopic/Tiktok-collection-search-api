@@ -1,0 +1,47 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Collection {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  playlistUrl String?
+  createdAt   DateTime @default(now())
+  videos      Video[]  @relation("CollectionVideos")
+}
+
+model Video {
+  id           String         @id @default(uuid()) @db.Uuid
+  videoUrl     String
+  thumbnailUrl String?
+  createdAt    DateTime       @default(now())
+  collectionId String         @db.Uuid
+  collection   Collection     @relation("CollectionVideos", fields: [collectionId], references: [id])
+  hashtags     VideoHashtag[] @relation("VideoHashtags")
+}
+
+model Hashtag {
+  id            String         @id @default(uuid()) @db.Uuid
+  hashtag       String         @unique
+  videoHashtags VideoHashtag[] @relation("VideoHashtags")
+}
+
+model VideoHashtag {
+  videoId   String  @db.Uuid
+  hashtagId String  @db.Uuid
+  video     Video   @relation("VideoHashtags", fields: [videoId], references: [id])
+  hashtag   Hashtag @relation("VideoHashtags", fields: [hashtagId], references: [id])
+
+  @@id([videoId, hashtagId])
+}
