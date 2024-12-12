@@ -24,6 +24,7 @@ model Collection {
 model Video {
   id           String         @id @default(uuid()) @db.Uuid
   videoUrl     String
+  // videoPlaybackUrl String?
   thumbnailUrl String?
   createdAt    DateTime       @default(now())
   collectionId String         @db.Uuid

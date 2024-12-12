@@ -179,6 +179,7 @@ export class ScraperService {
         if (url.includes('https://www.tiktok.com/api/collection/item_list')) {
           try {
             const json = await response.json();
+
             json?.itemList?.forEach((item) => {
               if (item?.video) {
                 const videoId = item?.id;
