@@ -19,12 +19,13 @@ export class ScraperService {
 
   constructor(private prisma: PrismaService) {}
 
-  async scrapeCollectionByUrl(playlistUrl: string) {
+  async scrapeCollectionByUrl(userId: string, playlistUrl: string) {
     try {
       const newCollection = await this.prisma.collection.create({
         data: {
           name: 'TikTok Collection',
           playlistUrl: playlistUrl,
+          userId: userId,
         },
       });
       console.log('New collection created with ID:', newCollection.id);

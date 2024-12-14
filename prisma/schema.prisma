@@ -13,12 +13,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email       String       @unique
+  password    String
+  collections Collection[]
+}
+
 model Collection {
   id          String   @id @default(uuid()) @db.Uuid
   name        String
   playlistUrl String?
   createdAt   DateTime @default(now())
   videos      Video[]  @relation("CollectionVideos")
+  userId      String   @db.Uuid
+  user        User     @relation(fields: [userId], references: [id])
 }
 
 model Video {

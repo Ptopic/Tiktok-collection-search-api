@@ -6,7 +6,9 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Request,
 } from '@nestjs/common';
+import { JwtAuth } from 'src/auth/decorators/jwt-auth.decorator';
 import { ScrapeCollectionDto } from './dto/scrape-collection.dto';
 import { ScraperService } from './scraper.service';
 
@@ -15,11 +17,16 @@ export class ScraperController {
   constructor(private scraperService: ScraperService) {}
 
   @Post()
-  scrapeCollectionByUrl(@Body() { email, playlistUrl }: ScrapeCollectionDto) {
-    return this.scraperService.scrapeCollectionByUrl(playlistUrl);
+  @JwtAuth()
+  scrapeCollectionByUrl(
+    @Request() req,
+    @Body() { playlistUrl }: ScrapeCollectionDto,
+  ) {
+    return this.scraperService.scrapeCollectionByUrl(req.user.sub, playlistUrl);
   }
 
   @Get(':id/videos')
+  @JwtAuth()
   async getVideosByCollectionId(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('hashtags') hashtags: string[] | undefined,
@@ -30,6 +37,7 @@ export class ScraperController {
   }
 
   @Get(':id/hashtags')
+  @JwtAuth()
   getHashtagsByCollectionId(@Param('id', ParseUUIDPipe) id: string) {
     return this.scraperService.getHashtagsByCollectionId(id);
   }
