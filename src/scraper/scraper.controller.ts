@@ -25,20 +25,40 @@ export class ScraperController {
     return this.scraperService.scrapeCollectionByUrl(req.user.sub, playlistUrl);
   }
 
+  @Get('my-collections')
+  @JwtAuth()
+  getCollections(@Request() req) {
+    return this.scraperService.getCollections(req.user.sub);
+  }
+
+  @Get(':id')
+  @JwtAuth()
+  getCollectionById(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
+    return this.scraperService.getCollectionById(req.user.sub, id);
+  }
+
   @Get(':id/videos')
   @JwtAuth()
   async getVideosByCollectionId(
+    @Request() req,
     @Param('id', ParseUUIDPipe) id: string,
     @Query('hashtags') hashtags: string[] | undefined,
   ) {
     const normalizedHashtags = Array.isArray(hashtags) ? hashtags : [hashtags];
 
-    return this.scraperService.getVideosByCollectionId(id, normalizedHashtags);
+    return this.scraperService.getVideosByCollectionId(
+      req.user.sub,
+      id,
+      normalizedHashtags,
+    );
   }
 
   @Get(':id/hashtags')
   @JwtAuth()
-  getHashtagsByCollectionId(@Param('id', ParseUUIDPipe) id: string) {
-    return this.scraperService.getHashtagsByCollectionId(id);
+  getHashtagsByCollectionId(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.scraperService.getHashtagsByCollectionId(req.user.sub, id);
   }
 }

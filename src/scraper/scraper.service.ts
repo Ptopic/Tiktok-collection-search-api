@@ -23,7 +23,7 @@ export class ScraperService {
     try {
       const newCollection = await this.prisma.collection.create({
         data: {
-          name: 'TikTok Collection',
+          name: 'Untitled Collection',
           playlistUrl: playlistUrl,
           userId: userId,
         },
@@ -33,6 +33,15 @@ export class ScraperService {
       const scrapeResult = await this.scrapeWithCaptchaHandling(playlistUrl);
 
       if (scrapeResult.success) {
+        const collectionTitle = scrapeResult.title;
+
+        await this.prisma.collection.update({
+          where: { id: newCollection.id },
+          data: {
+            name: collectionTitle,
+          },
+        });
+
         for (const video of scrapeResult.data) {
           await this.prisma.video.create({
             data: {
@@ -54,11 +63,15 @@ export class ScraperService {
             },
           });
         }
+        return {
+          success: true,
+          collectionId: newCollection.id,
+        };
       }
 
       return {
-        success: true,
-        collectionId: newCollection.id,
+        success: false,
+        message: 'Failed to scrape collection',
       };
     } catch (error) {
       console.error('Error during scraping process:', error);
@@ -79,9 +92,25 @@ export class ScraperService {
     });
   }
 
-  async getVideosByCollectionId(id: string, hashtags: string[] | undefined) {
+  async getCollections(userId: string) {
+    return this.prisma.collection.findMany({
+      where: { userId: userId },
+    });
+  }
+
+  async getCollectionById(userId: string, id: string) {
+    return this.prisma.collection.findUnique({
+      where: { id: id, userId: userId },
+    });
+  }
+
+  async getVideosByCollectionId(
+    userId: string,
+    id: string,
+    hashtags: string[] | undefined,
+  ) {
     const collection = await this.prisma.collection.findUnique({
-      where: { id: id },
+      where: { id: id, userId: userId },
       include: {
         videos: {
           include: {
@@ -127,9 +156,9 @@ export class ScraperService {
     };
   }
 
-  async getHashtagsByCollectionId(id: string) {
+  async getHashtagsByCollectionId(userId: string, id: string) {
     const collection = await this.prisma.collection.findUnique({
-      where: { id: id },
+      where: { id: id, userId: userId },
       include: {
         videos: {
           select: {
@@ -142,6 +171,13 @@ export class ScraperService {
         },
       },
     });
+
+    if (!collection) {
+      return {
+        success: false,
+        message: 'Collection not found',
+      };
+    }
 
     if (collection?.videos) {
       const allHashtags = new Set<string>();
@@ -220,6 +256,7 @@ export class ScraperService {
             }
           } catch (error) {
             console.error('Error parsing JSON:', error);
+            throw error;
           }
         }
       });
@@ -228,11 +265,23 @@ export class ScraperService {
         waitUntil: 'networkidle2',
       });
 
-      const totalVideos = await page.$eval('h2', (element) => {
-        const text = element.innerText;
-        const match = text.match(/(\d+) videos/);
-        return match ? parseInt(match[1], 10) : 0;
-      });
+      const collectionTitle = await page.$eval(
+        'div[class*="css-10ibnu7-DivShareTitleContainer"] h1',
+        (element) => element.textContent?.trim() || '',
+      );
+
+      let totalVideos = 0;
+
+      try {
+        totalVideos = await page.$eval('h2', (element) => {
+          const text = element.innerText;
+          const match = text.match(/(\d+) videos/);
+          return match ? parseInt(match[1], 10) : 0;
+        });
+      } catch (error) {
+        console.error('Error getting total videos:', error);
+        throw error;
+      }
 
       const scrollPage = async () => {
         const scrollDelay = 2000;
@@ -288,6 +337,7 @@ export class ScraperService {
 
       return {
         success: true,
+        title: collectionTitle,
         data: allTikTokVideos,
         total: allTikTokVideos.length,
         allHashtags: Array.from(allHashtags),
