@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { launch } from 'puppeteer';
 import { Server } from 'socket.io';
@@ -20,8 +24,9 @@ export class ScraperService {
   constructor(private prisma: PrismaService) {}
 
   async scrapeCollectionByUrl(userId: string, playlistUrl: string) {
+    let newCollection;
     try {
-      const newCollection = await this.prisma.collection.create({
+      newCollection = await this.prisma.collection.create({
         data: {
           name: 'Untitled Collection',
           playlistUrl: playlistUrl,
@@ -69,16 +74,16 @@ export class ScraperService {
         };
       }
 
-      return {
-        success: false,
-        message: 'Failed to scrape collection',
-      };
+      throw new BadRequestException('Failed to scrape collection');
     } catch (error) {
       console.error('Error during scraping process:', error);
-      return {
-        success: false,
-        message: error.message,
-      };
+      // Rm collection
+      await this.prisma.collection.delete({
+        where: { id: newCollection.id },
+      });
+      throw new BadRequestException(
+        'Failed to scrape collection: ' + error.message,
+      );
     }
   }
 
@@ -125,10 +130,7 @@ export class ScraperService {
     });
 
     if (!collection) {
-      return {
-        success: false,
-        message: 'Collection not found',
-      };
+      throw new NotFoundException('Collection not found');
     }
 
     const videos = collection.videos;
@@ -143,15 +145,13 @@ export class ScraperService {
       });
 
       return {
-        success: true,
         total: filteredVideos.length,
         videos: filteredVideos,
       };
     }
 
     return {
-      success: true,
-      total: videos.length,
+      total: videosWithHashtags.length,
       videos: videosWithHashtags,
     };
   }
@@ -173,10 +173,7 @@ export class ScraperService {
     });
 
     if (!collection) {
-      return {
-        success: false,
-        message: 'Collection not found',
-      };
+      throw new NotFoundException('Collection not found');
     }
 
     if (collection?.videos) {
@@ -349,5 +346,11 @@ export class ScraperService {
         message: error.message,
       };
     }
+  }
+
+  async deleteCollection(userId: string, id: string) {
+    return this.prisma.collection.delete({
+      where: { id: id, userId: userId },
+    });
   }
 }

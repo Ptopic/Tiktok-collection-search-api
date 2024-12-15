@@ -40,7 +40,7 @@ model Video {
   thumbnailUrl String?
   createdAt    DateTime       @default(now())
   collectionId String         @db.Uuid
-  collection   Collection     @relation("CollectionVideos", fields: [collectionId], references: [id])
+  collection   Collection     @relation("CollectionVideos", fields: [collectionId], references: [id], onDelete: Cascade)
   hashtags     VideoHashtag[] @relation("VideoHashtags")
 }
 
@@ -53,7 +53,7 @@ model Hashtag {
 model VideoHashtag {
   videoId   String  @db.Uuid
   hashtagId String  @db.Uuid
-  video     Video   @relation("VideoHashtags", fields: [videoId], references: [id])
+  video     Video   @relation("VideoHashtags", fields: [videoId], references: [id], onDelete: Cascade)
   hashtag   Hashtag @relation("VideoHashtags", fields: [hashtagId], references: [id])
 
   @@id([videoId, hashtagId])

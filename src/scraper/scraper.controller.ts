@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -18,11 +21,24 @@ export class ScraperController {
 
   @Post()
   @JwtAuth()
-  scrapeCollectionByUrl(
+  async scrapeCollectionByUrl(
     @Request() req,
     @Body() { playlistUrl }: ScrapeCollectionDto,
   ) {
-    return this.scraperService.scrapeCollectionByUrl(req.user.sub, playlistUrl);
+    try {
+      const collection = await this.scraperService.scrapeCollectionByUrl(
+        req.user.sub,
+        playlistUrl,
+      );
+
+      if (!collection) {
+        throw new NotFoundException('Failed to scrape collection');
+      }
+
+      return collection;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 
   @Get('my-collections')
@@ -34,7 +50,13 @@ export class ScraperController {
   @Get(':id')
   @JwtAuth()
   getCollectionById(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
-    return this.scraperService.getCollectionById(req.user.sub, id);
+    const collection = this.scraperService.getCollectionById(req.user.sub, id);
+
+    if (!collection) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    return collection;
   }
 
   @Get(':id/videos')
@@ -60,5 +82,11 @@ export class ScraperController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.scraperService.getHashtagsByCollectionId(req.user.sub, id);
+  }
+
+  @Delete(':id')
+  @JwtAuth()
+  deleteCollection(@Request() req, @Param('id', ParseUUIDPipe) id: string) {
+    return this.scraperService.deleteCollection(req.user.sub, id);
   }
 }
